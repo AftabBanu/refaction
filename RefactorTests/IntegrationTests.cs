@@ -21,6 +21,14 @@ namespace RefactorTests
             _productsService = new ProductService();
         }
 
+        [TearDown]
+        public void DisposeTest()
+        {
+            _productsService = null;
+            _productsOptionService = null;
+             
+        }
+
         #region Product Tests
 
         //this test case covers Creating new products, and Selecting all products
