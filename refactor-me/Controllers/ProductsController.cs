@@ -1,115 +1,163 @@
 ﻿using System;
 using System.Net;
 using System.Web.Http;
-using refactor_me.Models;
+using Refactor_BusinessServices.Services;
+using Refactor_BusinessServices.Entities;
+using System.Collections.Generic;
+using System.Net.Http;
 
 namespace refactor_me.Controllers
 {
     [RoutePrefix("products")]
     public class ProductsController : ApiController
     {
-        [Route]
-        [HttpGet]
-        public Products GetAll()
+        IProductService _productService;
+        IProductOptionService _productOptionService;
+        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ProductsController));
+
+        public ProductsController(IProductService productService, IProductOptionService optnService)
         {
-            return new Products();
+            _productService = productService;
+            _productOptionService = optnService;
         }
 
         [Route]
         [HttpGet]
-        public Products SearchByName(string name)
+        public HttpResponseMessage GetAll()
         {
-            return new Products(name);
+            log.Info("GetAll Method called for Products");
+            var products = _productService.GetAllProducts();
+
+            if (products != null)
+            {
+                var productEntities = products as List<ProductEntity> ?? products;
+                if (productEntities.Count > 0)
+                    return Request.CreateResponse(HttpStatusCode.OK, productEntities);
+            }
+
+            log.Info("Products not found");
+            return Request.CreateErrorResponse(HttpStatusCode.NotFound, "Products not found");
+        }
+
+        [Route]
+        [HttpGet]
+        public HttpResponseMessage SearchByName(string name)
+        {
+            log.Info(String.Format("SearchByName Method called for Products. Product Name is : {0}", name));
+
+            var products = _productService.GetProductsByName(name);
+            if (products != null)
+            {
+                var productEntities = products as List<ProductEntity> ?? products;
+                if (productEntities.Count > 0)
+                    return Request.CreateResponse(HttpStatusCode.OK, productEntities);
+            }
+
+            log.Info(String.Format("No Products listed for Name : {0}", name));
+
+            return Request.CreateErrorResponse(HttpStatusCode.NotFound, "Products not found");
         }
 
         [Route("{id}")]
         [HttpGet]
-        public Product GetProduct(Guid id)
+        public HttpResponseMessage GetProduct(Guid id)
         {
-            var product = new Product(id);
-            if (product.IsNew)
-                throw new HttpResponseException(HttpStatusCode.NotFound);
+            log.Info(String.Format("GetProduct Method called for Product Id : {0}", id));
 
-            return product;
+            var product = _productService.GetProductsById(id);
+            if (product != null)
+            {
+                log.Info(String.Format("Product found infor for Product Name : {0}, Product Desc: {1}, Product Price: {2}", product.Name, product.Description, product.Price));
+
+                return Request.CreateResponse(HttpStatusCode.OK, product);
+            }
+            log.Info(String.Format("No Product found for Product Id : {0}", id));
+
+            return Request.CreateErrorResponse(HttpStatusCode.NotFound, "Products not found");
         }
 
         [Route]
         [HttpPost]
-        public void Create(Product product)
+        public void Create(ProductEntity product)
         {
-            product.Save();
+            log.Info(String.Format("Create Method called for Product. Details are, Product Id : {0}, Product Name:{1}, Product Desc : {2}, Product Price : {3}", product.Id, product.Name, product.Description, product.Price));
+            _productService.CreateProduct(product);
+            log.Info(String.Format("Product created"));
         }
 
         [Route("{id}")]
         [HttpPut]
-        public void Update(Guid id, Product product)
+        public void Update(Guid id, ProductEntity product)
         {
-            var orig = new Product(id)
-            {
-                Name = product.Name,
-                Description = product.Description,
-                Price = product.Price,
-                DeliveryPrice = product.DeliveryPrice
-            };
+            log.Info(String.Format("Update Product Method called for Product Id : {0}", id));
 
-            if (!orig.IsNew)
-                orig.Save();
+            if (id != Guid.Empty)
+                _productService.UpdateProduct(id, product);
         }
 
         [Route("{id}")]
         [HttpDelete]
         public void Delete(Guid id)
         {
-            var product = new Product(id);
-            product.Delete();
+            log.Info(String.Format("Delete Product Method called for Product Id : {0}", id));
+
+            if (id != Guid.Empty)
+                _productService.DeleteProduct(id);
         }
 
         [Route("{productId}/options")]
         [HttpGet]
-        public ProductOptions GetOptions(Guid productId)
+        public HttpResponseMessage GetOptions(Guid productId)
         {
-            return new ProductOptions(productId);
+            log.Info(String.Format("Get Product Options Method called for Product Id : {0}", productId));
+
+            var prodOptions = _productOptionService.GetOptions(productId);
+            if (prodOptions != null)
+            {
+                var productOptionsEntity = prodOptions as List<ProductOptionsEntity> ?? prodOptions;
+
+                if (productOptionsEntity.Count > 0)
+                    return Request.CreateResponse(HttpStatusCode.OK, productOptionsEntity);
+            }
+            return Request.CreateErrorResponse(HttpStatusCode.NotFound, "Products not found");
         }
 
         [Route("{productId}/options/{id}")]
         [HttpGet]
-        public ProductOption GetOption(Guid productId, Guid id)
+        public HttpResponseMessage GetOption(Guid productId, Guid id)
         {
-            var option = new ProductOption(id);
-            if (option.IsNew)
-                throw new HttpResponseException(HttpStatusCode.NotFound);
+            log.Info(String.Format("GetOption Method called for Product Id : {0}, Option ID : {1}", productId, id));
 
-            return option;
+            var prodOptions = _productOptionService.GetOption(productId, id);
+            if (prodOptions != null)
+            {
+                return Request.CreateResponse(HttpStatusCode.OK, prodOptions);
+            }
+            return Request.CreateErrorResponse(HttpStatusCode.NotFound, "Products not found");
         }
 
         [Route("{productId}/options")]
         [HttpPost]
-        public void CreateOption(Guid productId, ProductOption option)
+        public void CreateOption(Guid productId, ProductOptionsEntity option)
         {
-            option.ProductId = productId;
-            option.Save();
+            log.Info(String.Format("CreateOption Method called for Product Id : {0}", productId));
+            _productOptionService.CreateOption(productId, option);
         }
 
         [Route("{productId}/options/{id}")]
         [HttpPut]
-        public void UpdateOption(Guid id, ProductOption option)
+        public void UpdateOption(Guid id, ProductOptionsEntity option)
         {
-            var orig = new ProductOption(id)
-            {
-                Name = option.Name,
-                Description = option.Description
-            };
-
-            if (!orig.IsNew)
-                orig.Save();
+            log.Info(String.Format("UpdateOption Method called for Product Id : {0}", id));
+            _productOptionService.UpdateOption(id, option);
         }
 
         [Route("{productId}/options/{id}")]
         [HttpDelete]
         public void DeleteOption(Guid id)
         {
-            var opt = new ProductOption(id);
-            opt.Delete();
+            log.Info(String.Format("DeleteOption Method called for Product Id : {0}", id));
+            _productOptionService.DeleteOption(id);
         }
     }
 }
