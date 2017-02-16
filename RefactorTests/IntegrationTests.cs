@@ -6,6 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Refactor_BusinessServices.Services;
 using Refactor_BusinessServices.Entities;
+using System.IO;
+using System.Reflection;
 
 namespace RefactorTests
 {
@@ -17,6 +19,7 @@ namespace RefactorTests
         [SetUp]
         public void SetUp()
         {
+            AppDomain.CurrentDomain.SetData("DataDirectory", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
             _productsOptionService = new ProductOptionService();
             _productsService = new ProductService();
         }
